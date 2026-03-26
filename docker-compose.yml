@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sqwid}
+      POSTGRES_USER: ${POSTGRES_USER:-sqwid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sqwid}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sqwid} -d ${POSTGRES_DB:-sqwid}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ipfs:
+    image: ipfs/kubo:latest
+    ports:
+      - "${IPFS_API_PORT:-5001}:5001"
+      - "${IPFS_GATEWAY_PORT:-8081}:8080"
+    volumes:
+      - ipfs_staging:/export
+      - ipfs_data:/data/ipfs
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ipfs:
+        condition: service_started
+    env_file:
+      - apps/backend/.env
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+    depends_on:
+      - backend
+    env_file:
+      - apps/client/.env
+    ports:
+      - "${CLIENT_PORT:-3000}:3000"
+
+volumes:
+  postgres_data:
+  ipfs_staging:
+  ipfs_data:

@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-03-26T12:26:25.305Z",
+  "network": {
+    "name": "custom_13939",
+    "chainId": 13939,
+    "rpcUrl": "http://34.123.142.246:8545"
+  },
+  "deployer": "0x212e2A4545ee7AC59837212F9860DbC245090B6f",
+  "contracts": {
+    "SqwidERC1155": {
+      "address": "0xDa5449f0123eE8851979A235115326E405d305b4",
+      "transactionHash": "0x95561c7761d34c1cc4670a1859f86c81bf75f286261af9df83c2bc8b1dca879a",
+      "constructorArgs": []
+    },
+    "SqwidMarketplace": {
+      "address": "0x875D8d84A9EC2ec7B8fE3d8e1506B904065C06Fb",
+      "transactionHash": "0xcfd5222e6dd02603014123eaf4e3e7139648d133c4298773398899caa64fe47e",
+      "constructorArgs": [
+        250,
+        "0xDa5449f0123eE8851979A235115326E405d305b4"
+      ]
+    },
+    "SqwidMarketplaceUtil": {
+      "address": "0xC32b3C33CB0d879997bb387D8F35e616C323c8eC",
+      "transactionHash": "0xd0a3191b0b728bbc54c0b1b60c22ed56c3b6cb345f7a77ee0aa0ce3c45abb08c",
+      "constructorArgs": [
+        "0x875D8d84A9EC2ec7B8fE3d8e1506B904065C06Fb"
+      ]
+    },
+    "SqwidGovernance": {
+      "address": "0x9a1D7bD7D81069213B92b8f0cB3068717Bd916F2",
+      "transactionHash": "0x583f249c45fdf826e9fa51014157aa5301aee33d84d1a1e912856e38a649040d",
+      "constructorArgs": [
+        [
+          "0x212e2A4545ee7AC59837212F9860DbC245090B6f"
+        ],
+        1
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+.git
+.gitignore
+.cache
+.home
+node_modules
+**/node_modules
+**/build
+apps/client/build
+packages/contracts/cache
+tmp

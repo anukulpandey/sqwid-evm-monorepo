@@ -1,9 +1,13 @@
 node_modules
+apps/**/node_modules
+packages/**/node_modules
 
 #Hardhat files
 cache
 artifacts
 bin
+packages/contracts/cache
+packages/contracts/artifacts
 
 .yarn/*
 !.yarn/patches
@@ -21,3 +25,7 @@ notes.txt
 TODO.txt
 *.temp-file
 .temp
+Library/
+apps/backend/.env
+apps/client/.env
+docker-data/
