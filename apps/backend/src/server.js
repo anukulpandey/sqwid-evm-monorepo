@@ -156,8 +156,10 @@ const readCollectionView = async (collectionId, { includeStats = false } = {}) =
     name: collection.name,
     description: collection.description,
     image: collection.image,
+    thumbnail: collection.thumbnail || collection.image,
     thumb: collection.thumbnail || collection.image,
     traits: collection.traits || {},
+    createdAt: collection.created_at,
     owner: collection.owner,
     creator: {
       id: owner.address,
@@ -478,35 +480,63 @@ const start = async () => {
   app.get("/get/collections/all/by/:sortField", async (req, res) => {
     const limit = Math.min(Number(req.query.limit || 8), 50);
     const requestedSortField = (req.params.sortField || "items").replace(/^stats\./, "");
-    const sortField = ["items", "itemsSold", "volume", "average"].includes(requestedSortField)
+    const sortField = ["items", "itemsSold", "volume", "average", "latest"].includes(requestedSortField)
       ? requestedSortField
       : "items";
+    const sortDirection = req.query.sorting === "asc" ? "asc" : "desc";
     const rows = await listCollectionsByStats(200);
     const collections = await Promise.all(
       rows.map((row) => readCollectionView(row.id, { includeStats: true }))
     );
     collections.sort((left, right) => {
-      const leftValue = Number(left?.stats?.[sortField] || 0);
-      const rightValue = Number(right?.stats?.[sortField] || 0);
+      const leftValue =
+        sortField === "latest"
+          ? Date.parse(left?.createdAt || 0)
+          : Number(left?.stats?.[sortField] || 0);
+      const rightValue =
+        sortField === "latest"
+          ? Date.parse(right?.createdAt || 0)
+          : Number(right?.stats?.[sortField] || 0);
+
       if (rightValue !== leftValue) {
-        return rightValue - leftValue;
+        return sortDirection === "asc"
+          ? leftValue - rightValue
+          : rightValue - leftValue;
       }
+
+      const createdAtCompare =
+        Date.parse(right?.createdAt || 0) - Date.parse(left?.createdAt || 0);
+      if (createdAtCompare !== 0) {
+        return createdAtCompare;
+      }
+
       return (left?.name || "").localeCompare(right?.name || "");
     });
-    return res.json({ collections });
+    return res.json({ collections: collections.slice(0, limit) });
   });
 
   app.get("/search/all/:term", async (req, res) => {
     const term = req.params.term || "";
-    const [collections, users] = await Promise.all([
+    const [collectionsResult, usersResult] = await Promise.all([
       searchCollections(term, 1, 5),
-      searchUsers(term, 5),
+      searchUsers(term, 1, 5),
     ]);
+
+    const collections = await Promise.all(
+      collectionsResult.collections.map(async (collection) => ({
+        ...(await readCollectionView(collection.id, { includeStats: true })),
+        searchMeta: collection.searchMeta,
+      }))
+    );
+
     return res.json({
-      collections: await Promise.all(
-        collections.collections.map((collection) => readCollectionView(collection.id))
-      ),
-      users,
+      collections,
+      users: usersResult.users,
+      totals: {
+        collections: collectionsResult.total,
+        users: usersResult.total,
+      },
+      insight: collectionsResult.insight,
     });
   });
 
@@ -516,9 +546,24 @@ const start = async () => {
     const result = await searchCollections(req.params.term || "", page, perPage);
     return res.json({
       collections: await Promise.all(
-        result.collections.map((collection) => readCollectionView(collection.id))
+        result.collections.map(async (collection) => ({
+          ...(await readCollectionView(collection.id, { includeStats: true })),
+          searchMeta: collection.searchMeta,
+        }))
       ),
       total: result.total,
+      insight: result.insight,
+    });
+  });
+
+  app.get("/search/users/:term", async (req, res) => {
+    const page = Math.max(Number(req.query.page || 1), 1);
+    const perPage = Math.min(Number(req.query.perPage || 10), 50);
+    const result = await searchUsers(req.params.term || "", page, perPage);
+    return res.json({
+      users: result.users,
+      total: result.total,
+      insight: result.insight,
     });
   });
 

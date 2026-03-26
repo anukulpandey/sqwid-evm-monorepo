@@ -3,12 +3,12 @@ import { respondTo } from "@styles/styledMediaQuery";
 import React, { useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 // import RecentlyListed from "./RecentlyListed";
-import { fetchFeaturedItems } from "@utils/marketplace";
+import { fetchCollectionsByStats } from "@utils/marketplace";
 // import OnSaleSection from "@elements/Explore/Sections/OnSaleSection";
 // import AuctionSection from "@elements/Explore/Sections/AuctionSection";
 // import RaffleSection from "@elements/Explore/Sections/RaffleSection";
 // import LoansSection from "@elements/Explore/Sections/LoansSection";
-import FeaturedSection from "@elements/Explore/Sections/FeaturedSection";
+import TopCollectionsSection from "@elements/Explore/Sections/TopCollectionsSection";
 import useOnScreen from "@utils/useOnScreen";
 
 // changed the min height ot 20 instead of 70 to stop the quirky thing
@@ -44,13 +44,15 @@ const EmptySectionText = styled.h2`
 	font-size: 1.25rem;
 `;
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 const Explore = () => {
 	const [isLoading, setIsLoading] = useState(true);
 	// const [onSale, setOnSale] = useState([]);
 	// const [auctions, setAuctions] = useState([]);
 	// const [raffles, setRaffles] = useState([]);
 	// const [loans, setLoans] = useState([]);
-	const [featured, setFeatured] = useState([]);
+	const [collections, setCollections] = useState([]);
 	const containerRef = useRef();
 	const { isVisible } = useOnScreen(containerRef);
 
@@ -61,13 +63,19 @@ const Explore = () => {
 		// setAuctions(auction);
 		// setRaffles(raffle);
 		// setLoans(loan);
-		const featured = await fetchFeaturedItems ();
-		setFeatured (featured);
+		const response = await fetchCollectionsByStats("latest", Infinity, null, "desc", 10);
+		const rawCollections = response.collections || [];
+		const nonDefaultCollections = rawCollections.filter(
+			collection => collection?.owner?.toLowerCase() !== ZERO_ADDRESS
+		);
+		setCollections(
+			(nonDefaultCollections.length ? nonDefaultCollections : rawCollections).slice(0, 10)
+		);
 		setIsLoading(false);
 	};
 
 	useEffect(() => {
-		isVisible && featured.length === 0 && fetchData();
+		isVisible && collections.length === 0 && fetchData();
 		//eslint-disable-next-line
 	}, [isVisible]);
 
@@ -78,10 +86,10 @@ const Explore = () => {
 					{!isLoading && (
 						<>
 							{
-								featured.length ? (
-									<FeaturedSection items={featured} />
+								collections.length ? (
+									<TopCollectionsSection items={collections} />
 								) : (
-									<EmptySectionText>There are no featured items currently 🙂</EmptySectionText>
+									<EmptySectionText>No collections have been created yet.</EmptySectionText>
 								)
 							}
 							{/* <OnSaleSection items={onSale} />

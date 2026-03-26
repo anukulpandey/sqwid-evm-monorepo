@@ -127,43 +127,445 @@ const listCollectionsByStats = async (limit = 8) => {
   return result.rows;
 };
 
-const searchCollections = async (term, page = 1, perPage = 10) => {
-  const offset = (page - 1) * perPage;
-  const search = `%${term.toLowerCase()}%`;
-  const [items, total] = await Promise.all([
-    query(
-      `
-        SELECT * FROM collections
-        WHERE LOWER(name) LIKE $1
-        ORDER BY created_at DESC
-        LIMIT $2 OFFSET $3
-      `,
-      [search, perPage, offset]
-    ),
-    query(
-      `SELECT COUNT(*)::int AS total FROM collections WHERE LOWER(name) LIKE $1`,
-      [search]
-    ),
-  ]);
+const SEARCH_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "by",
+  "find",
+  "for",
+  "from",
+  "in",
+  "me",
+  "of",
+  "on",
+  "search",
+  "show",
+  "the",
+  "to",
+  "with",
+]);
+
+const SEARCH_INTENT_WORDS = new Set([
+  "address",
+  "artist",
+  "best",
+  "collection",
+  "collections",
+  "creator",
+  "creators",
+  "latest",
+  "new",
+  "newest",
+  "nft",
+  "nfts",
+  "owner",
+  "popular",
+  "recent",
+  "recently",
+  "top",
+  "trending",
+  "user",
+  "users",
+  "wallet",
+]);
+
+const uniqueValues = (values) => [...new Set(values.filter(Boolean))];
+
+const normalizeSearchText = (value = "") =>
+  (value ?? "")
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+const tokenizeSearch = (value = "") =>
+  uniqueValues(normalizeSearchText(value).split(/[^a-z0-9x]+/).filter(Boolean));
+
+const extractAddressFragment = (value = "") =>
+  normalizeSearchText(value).match(/0x[a-f0-9]{4,40}/)?.[0] || null;
+
+const describeSearchIntent = (term, scope = "everything") => {
+  const normalized = normalizeSearchText(term);
+  const rawTokens = tokenizeSearch(normalized);
+  const addressFragment = extractAddressFragment(normalized);
+  const isLatestIntent = /\b(latest|new|newest|recent|recently)\b/i.test(term);
+  const isTopIntent = /\b(top|best|popular|trending)\b/i.test(term);
+  const meaningfulTokens = rawTokens.filter(
+    (token) =>
+      token.length > 1 &&
+      !SEARCH_STOP_WORDS.has(token) &&
+      !SEARCH_INTENT_WORDS.has(token)
+  );
+
+  let summary = `Searching ${scope} across names, descriptions, creators, and wallet fragments.`;
+  if (addressFragment) {
+    summary = `Searching ${scope} by wallet fragment and creator ownership.`;
+  } else if (isLatestIntent) {
+    summary = `Searching ${scope} with extra weight on the newest matches.`;
+  } else if (isTopIntent) {
+    summary = `Searching ${scope} with extra weight on the strongest matches first.`;
+  }
 
   return {
-    collections: items.rows,
-    total: total.rows[0]?.total || 0,
+    mode: addressFragment ? "address" : isLatestIntent ? "latest" : isTopIntent ? "top" : "semantic",
+    query: normalized,
+    rawTokens,
+    meaningfulTokens,
+    addressFragment,
+    summary,
+    helperText: "Try a collection name, description, creator name, or a wallet fragment like 0x212e.",
   };
 };
 
-const searchUsers = async (term, limit = 5) => {
-  const search = `%${term.toLowerCase()}%`;
+const scoreTextField = (
+  value,
+  query,
+  tokens,
+  {
+    label,
+    exact = 80,
+    prefix = 54,
+    phrase = 42,
+    tokenExact = 18,
+    tokenPrefix = 13,
+    tokenIncludes = 8,
+  } = {}
+) => {
+  const normalizedValue = normalizeSearchText(value);
+  if (!normalizedValue) {
+    return { score: 0, reasons: [], matchedTokens: [] };
+  }
+
+  const words = tokenizeSearch(normalizedValue);
+  let score = 0;
+  const reasons = [];
+  const matchedTokens = new Set();
+
+  if (query) {
+    if (normalizedValue === query) {
+      score += exact;
+      reasons.push(`Exact ${label} match`);
+    } else if (normalizedValue.startsWith(query)) {
+      score += prefix;
+      reasons.push(`${label} starts with your query`);
+    } else if (normalizedValue.includes(query)) {
+      score += phrase;
+      reasons.push(`${label} mentions your query`);
+    }
+  }
+
+  for (const token of tokens) {
+    if (!token) {
+      continue;
+    }
+
+    if (words.includes(token)) {
+      score += tokenExact;
+      matchedTokens.add(token);
+      reasons.push(`${label} matches "${token}"`);
+      continue;
+    }
+
+    if (words.some((word) => word.startsWith(token))) {
+      score += tokenPrefix;
+      matchedTokens.add(token);
+      reasons.push(`${label} starts with "${token}"`);
+      continue;
+    }
+
+    if (normalizedValue.includes(token)) {
+      score += tokenIncludes;
+      matchedTokens.add(token);
+      reasons.push(`${label} includes "${token}"`);
+    }
+  }
+
+  return {
+    score,
+    reasons: uniqueValues(reasons),
+    matchedTokens: [...matchedTokens],
+  };
+};
+
+const buildSearchMeta = ({ score, reasons, matchedFields }) => {
+  const uniqueReasons = uniqueValues(reasons).slice(0, 3);
+  const primaryReason =
+    uniqueReasons.find((reason) => reason !== "All search terms matched") ||
+    uniqueReasons[0] ||
+    "Related match";
+
+  return {
+    score,
+    reason: primaryReason,
+    reasons: uniqueReasons,
+    matchedFields: [...matchedFields],
+  };
+};
+
+const scoreCollectionCandidate = (row, insight) => {
+  const tokens = insight.meaningfulTokens;
+  const query = tokens.join(" ") || (!insight.addressFragment ? insight.query : "");
+  const reasons = [];
+  const matchedFields = new Set();
+  const matchedTokens = new Set();
+  let score = 0;
+
+  const applyFieldScore = (fieldResult, fieldName) => {
+    if (!fieldResult.score) {
+      return;
+    }
+
+    score += fieldResult.score;
+    fieldResult.reasons.forEach((reason) => reasons.push(reason));
+    fieldResult.matchedTokens.forEach((token) => matchedTokens.add(token));
+    matchedFields.add(fieldName);
+  };
+
+  applyFieldScore(
+    scoreTextField(row.name, query, tokens, {
+      label: "Collection name",
+      exact: 120,
+      prefix: 88,
+      phrase: 70,
+      tokenExact: 28,
+      tokenPrefix: 18,
+      tokenIncludes: 12,
+    }),
+    "name"
+  );
+
+  applyFieldScore(
+    scoreTextField(row.description, query, tokens, {
+      label: "Description",
+      exact: 56,
+      prefix: 36,
+      phrase: 28,
+      tokenExact: 12,
+      tokenPrefix: 10,
+      tokenIncludes: 7,
+    }),
+    "description"
+  );
+
+  applyFieldScore(
+    scoreTextField(row.owner_display_name, query, tokens, {
+      label: "Creator",
+      exact: 72,
+      prefix: 52,
+      phrase: 34,
+      tokenExact: 14,
+      tokenPrefix: 12,
+      tokenIncludes: 8,
+    }),
+    "creator"
+  );
+
+  applyFieldScore(
+    scoreTextField(row.owner, insight.addressFragment || query, insight.addressFragment ? [] : tokens, {
+      label: "Creator address",
+      exact: 110,
+      prefix: 86,
+      phrase: 48,
+      tokenExact: 16,
+      tokenPrefix: 12,
+      tokenIncludes: 8,
+    }),
+    "owner"
+  );
+
+  if (insight.addressFragment) {
+    const owner = normalizeSearchText(row.owner);
+    if (owner.startsWith(insight.addressFragment)) {
+      score += 90;
+      reasons.push("Creator wallet starts with your address fragment");
+      matchedFields.add("owner");
+    } else if (owner.includes(insight.addressFragment)) {
+      score += 60;
+      reasons.push("Creator wallet contains your address fragment");
+      matchedFields.add("owner");
+    }
+  }
+
+  if (!tokens.length && !insight.addressFragment) {
+    if (insight.mode === "latest") {
+      score += 20;
+      reasons.push("Newest collection");
+    } else if (insight.mode === "top") {
+      score += 12;
+      reasons.push("Strong collection match");
+    }
+  }
+
+  if (tokens.length && matchedTokens.size === tokens.length) {
+    score += 24;
+    reasons.unshift("All search terms matched");
+  }
+
+  return buildSearchMeta({ score, reasons, matchedFields });
+};
+
+const scoreUserCandidate = (row, insight) => {
+  const tokens = insight.meaningfulTokens;
+  const query = tokens.join(" ") || (!insight.addressFragment ? insight.query : "");
+  const reasons = [];
+  const matchedFields = new Set();
+  const matchedTokens = new Set();
+  let score = 0;
+
+  const applyFieldScore = (fieldResult, fieldName) => {
+    if (!fieldResult.score) {
+      return;
+    }
+
+    score += fieldResult.score;
+    fieldResult.reasons.forEach((reason) => reasons.push(reason));
+    fieldResult.matchedTokens.forEach((token) => matchedTokens.add(token));
+    matchedFields.add(fieldName);
+  };
+
+  applyFieldScore(
+    scoreTextField(row.display_name, query, tokens, {
+      label: "User name",
+      exact: 118,
+      prefix: 82,
+      phrase: 58,
+      tokenExact: 24,
+      tokenPrefix: 16,
+      tokenIncludes: 10,
+    }),
+    "displayName"
+  );
+
+  applyFieldScore(
+    scoreTextField(row.bio, query, tokens, {
+      label: "Bio",
+      exact: 40,
+      prefix: 24,
+      phrase: 18,
+      tokenExact: 10,
+      tokenPrefix: 8,
+      tokenIncludes: 6,
+    }),
+    "bio"
+  );
+
+  applyFieldScore(
+    scoreTextField(row.address, insight.addressFragment || query, insight.addressFragment ? [] : tokens, {
+      label: "Wallet",
+      exact: 110,
+      prefix: 86,
+      phrase: 42,
+      tokenExact: 14,
+      tokenPrefix: 12,
+      tokenIncludes: 7,
+    }),
+    "address"
+  );
+
+  if (insight.addressFragment) {
+    const address = normalizeSearchText(row.address);
+    if (address.startsWith(insight.addressFragment)) {
+      score += 96;
+      reasons.push("Wallet starts with your address fragment");
+      matchedFields.add("address");
+    } else if (address.includes(insight.addressFragment)) {
+      score += 60;
+      reasons.push("Wallet contains your address fragment");
+      matchedFields.add("address");
+    }
+  }
+
+  if (tokens.length && matchedTokens.size === tokens.length) {
+    score += 18;
+    reasons.unshift("All search terms matched");
+  }
+
+  return buildSearchMeta({ score, reasons, matchedFields });
+};
+
+const compareSearchRows = (left, right, insight, timestampKey) => {
+  const scoreDelta = (right.searchMeta?.score || 0) - (left.searchMeta?.score || 0);
+  if (scoreDelta !== 0) {
+    return scoreDelta;
+  }
+
+  const timeDelta =
+    Date.parse(right?.[timestampKey] || 0) - Date.parse(left?.[timestampKey] || 0);
+  if (timeDelta !== 0) {
+    return timeDelta;
+  }
+
+  if (insight.mode === "address") {
+    return normalizeSearchText(left?.name || left?.display_name || "").localeCompare(
+      normalizeSearchText(right?.name || right?.display_name || "")
+    );
+  }
+
+  return normalizeSearchText(left?.name || left?.display_name || "").localeCompare(
+    normalizeSearchText(right?.name || right?.display_name || "")
+  );
+};
+
+const searchCollections = async (term, page = 1, perPage = 10) => {
+  const offset = (page - 1) * perPage;
+  const insight = describeSearchIntent(term, "collections");
+  const result = await query(
+    `
+      SELECT collections.*, users.display_name AS owner_display_name
+      FROM collections
+      LEFT JOIN users ON users.address = collections.owner
+      ORDER BY collections.created_at DESC
+      LIMIT 500
+    `
+  );
+
+  const collections = result.rows
+    .map((row) => ({
+      ...row,
+      searchMeta: scoreCollectionCandidate(row, insight),
+    }))
+    .filter(
+      (row) =>
+        row.searchMeta.score > 0 &&
+        (row.id !== config.defaultCollectionId ||
+          insight.query.includes("default") ||
+          row.searchMeta.score >= 100)
+    )
+    .sort((left, right) => compareSearchRows(left, right, insight, "created_at"));
+
+  return {
+    collections: collections.slice(offset, offset + perPage),
+    total: collections.length,
+    insight,
+  };
+};
+
+const searchUsers = async (term, page = 1, perPage = 10) => {
+  const offset = (page - 1) * perPage;
+  const insight = describeSearchIntent(term, "users");
   const result = await query(
     `
       SELECT * FROM users
-      WHERE LOWER(display_name) LIKE $1 OR LOWER(address) LIKE $1
       ORDER BY updated_at DESC
-      LIMIT $2
-    `,
-    [search, limit]
+      LIMIT 500
+    `
   );
-  return result.rows.map(normalizeUser);
+
+  const users = result.rows
+    .map((row) => ({
+      ...normalizeUser(row),
+      updated_at: row.updated_at,
+      searchMeta: scoreUserCandidate(row, insight),
+    }))
+    .filter((row) => row.searchMeta.score > 0)
+    .sort((left, right) => compareSearchRows(left, right, insight, "updated_at"));
+
+  return {
+    users: users.slice(offset, offset + perPage),
+    total: users.length,
+    insight,
+  };
 };
 
 const upsertCollectible = async (collectible) => {
