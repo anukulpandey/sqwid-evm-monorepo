@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sqwid}
+      POSTGRES_USER: ${POSTGRES_USER:-sqwid}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sqwid}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sqwid} -d ${POSTGRES_DB:-sqwid}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ipfs:
+    image: ipfs/kubo:latest
+    restart: unless-stopped
+    volumes:
+      - ipfs_staging:/export
+      - ipfs_data:/data/ipfs
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ipfs:
+        condition: service_started
+    expose:
+      - "8080"
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sqwid}:${POSTGRES_PASSWORD:-sqwid}@postgres:5432/${POSTGRES_DB:-sqwid}
+      RPC_URL: ${RPC_URL:-http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
+      CHAIN_ID: ${CHAIN_ID:-13939}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dokploy}
+      IPFS_API_URL: http://ipfs:5001
+      IPFS_GATEWAY_URL: ${IPFS_GATEWAY_URL:-http://ipfs:8080/ipfs/}
+      CORS_ORIGIN: ${CLIENT_PUBLIC_URL:?Set CLIENT_PUBLIC_URL in Dokploy}
+      SYNC_START_BLOCK: ${SYNC_START_BLOCK:-}
+      DEFAULT_COLLECTION_ID: ${DEFAULT_COLLECTION_ID:-ASwOXeRM5DfghnURP4g2}
+      MODERATORS: ${MODERATORS:-}
+
+  client:
+    build:
+      context: .
+      dockerfile: apps/client/Dockerfile
+      args:
+        REACT_APP_CHAIN_ID: ${CHAIN_ID:-13939}
+        REACT_APP_RPC_URL: ${RPC_URL:-http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
+        REACT_APP_BACKEND_URL: ${BACKEND_PUBLIC_URL:?Set BACKEND_PUBLIC_URL in Dokploy}
+        REACT_APP_CHAIN_NAME: ${REACT_APP_CHAIN_NAME:-Sqwid 13939}
+        REACT_APP_CURRENCY_SYMBOL: ${REACT_APP_CURRENCY_SYMBOL:-REEF}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "3000"
+
+volumes:
+  postgres_data:
+  ipfs_staging:
+  ipfs_data:

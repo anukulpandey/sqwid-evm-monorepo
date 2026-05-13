@@ -1,30 +1,30 @@
 {
-  "generatedAt": "2026-03-26T12:26:25.305Z",
+  "generatedAt": "2026-05-13T10:02:54.988Z",
   "network": {
     "name": "custom_13939",
     "chainId": 13939,
-    "rpcUrl": "http://34.123.142.246:8545"
+    "rpcUrl": "http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io"
   },
   "deployer": "0x212e2A4545ee7AC59837212F9860DbC245090B6f",
   "contracts": {
     "SqwidERC1155": {
-      "address": "0xDa5449f0123eE8851979A235115326E405d305b4",
-      "transactionHash": "0x95561c7761d34c1cc4670a1859f86c81bf75f286261af9df83c2bc8b1dca879a",
+      "address": "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
+      "transactionHash": "0x9637bd797f92c301dc43cbcbc2c0e275cd4e883944fb9904b19a982fb7705341",
       "constructorArgs": []
     },
     "SqwidMarketplace": {
-      "address": "0x875D8d84A9EC2ec7B8fE3d8e1506B904065C06Fb",
-      "transactionHash": "0xcfd5222e6dd02603014123eaf4e3e7139648d133c4298773398899caa64fe47e",
+      "address": "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
+      "transactionHash": "0xfab6e38c5df0a428a68374d434896309c355095439b11d9dfe5ec87de28dd586",
       "constructorArgs": [
         250,
-        "0xDa5449f0123eE8851979A235115326E405d305b4"
+        "0x5Da80f08835b6bE25233a8ac7F20593cE277697A"
       ]
     },
     "SqwidMarketplaceUtil": {
-      "address": "0xC32b3C33CB0d879997bb387D8F35e616C323c8eC",
-      "transactionHash": "0xd0a3191b0b728bbc54c0b1b60c22ed56c3b6cb345f7a77ee0aa0ce3c45abb08c",
+      "address": "0xDBd5a41a5D1d787C23073fAdb234eb2512178248",
+      "transactionHash": "0xfd85f1a7ededbb910da70f966b5799df2bbdb66e1a8e882cf5498200d20e8518",
       "constructorArgs": [
-        "0x875D8d84A9EC2ec7B8fE3d8e1506B904065C06Fb"
+        "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027"
       ]
     },
     "SqwidGovernance": {
