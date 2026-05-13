@@ -40,12 +40,12 @@ Use [docker-compose.dokploy.yml](/Users/anukul/Desktop/sqwid-evm-monorepo/docker
 
 Set these variables in Dokploy before the first deploy:
 
-- `CLIENT_PUBLIC_URL`
-- `BACKEND_PUBLIC_URL`
 - `JWT_SECRET`
 
 Optional overrides:
 
+- `CLIENT_PUBLIC_URL`
+- `BACKEND_PUBLIC_URL`
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
@@ -54,4 +54,6 @@ Optional overrides:
 - `SYNC_START_BLOCK`
 - `MODERATORS`
 
-The frontend bakes `REACT_APP_BACKEND_URL` into the static bundle at build time, so rebuild the `client` service if you change `BACKEND_PUBLIC_URL`.
+By default, the Dokploy setup serves the frontend from the `client` service and proxies browser requests from `/api/*` to the `backend` service through Nginx, so you only need a public domain for the frontend unless you want the API exposed separately.
+
+If you set `BACKEND_PUBLIC_URL`, the frontend bakes that value into the static bundle at build time, so rebuild the `client` service after changing it.

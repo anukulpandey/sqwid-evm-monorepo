@@ -41,7 +41,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dokploy}
       IPFS_API_URL: http://ipfs:5001
       IPFS_GATEWAY_URL: ${IPFS_GATEWAY_URL:-http://ipfs:8080/ipfs/}
-      CORS_ORIGIN: ${CLIENT_PUBLIC_URL:?Set CLIENT_PUBLIC_URL in Dokploy}
+      CORS_ORIGIN: ${CLIENT_PUBLIC_URL:-http://localhost:3000}
       SYNC_START_BLOCK: ${SYNC_START_BLOCK:-}
       DEFAULT_COLLECTION_ID: ${DEFAULT_COLLECTION_ID:-ASwOXeRM5DfghnURP4g2}
       MODERATORS: ${MODERATORS:-}
@@ -53,7 +53,7 @@ services:
       args:
         REACT_APP_CHAIN_ID: ${CHAIN_ID:-13939}
         REACT_APP_RPC_URL: ${RPC_URL:-http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
-        REACT_APP_BACKEND_URL: ${BACKEND_PUBLIC_URL:?Set BACKEND_PUBLIC_URL in Dokploy}
+        REACT_APP_BACKEND_URL: ${BACKEND_PUBLIC_URL:-/api}
         REACT_APP_CHAIN_NAME: ${REACT_APP_CHAIN_NAME:-Sqwid 13939}
         REACT_APP_CURRENCY_SYMBOL: ${REACT_APP_CURRENCY_SYMBOL:-REEF}
     restart: unless-stopped
