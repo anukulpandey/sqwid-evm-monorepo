@@ -1,4 +1,5 @@
 import jwt_decode from "jwt-decode";
+import { normalizeClientErrorMessage } from "./web3ErrorMessage";
 
 export const SESSION_CLEARED_EVENT = "sqwid:session-cleared";
 
@@ -122,7 +123,4 @@ export const getApiErrorMessage = (
 	error,
 	fallback = "Something went wrong."
 ) =>
-	error?.response?.data?.error ||
-	error?.response?.data?.message ||
-	error?.message ||
-	fallback;
+	normalizeClientErrorMessage(error, fallback);

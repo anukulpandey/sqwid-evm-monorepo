@@ -2,6 +2,7 @@ import ErrorContext from "@contexts/Error/ErrorContext";
 import CancelIcon from "@static/svg/CancelIcon";
 import constants from "@utils/constants";
 import extractJSON from "@utils/extractJSON";
+import { normalizeClientErrorMessage } from "@utils/web3ErrorMessage";
 // import useIsTabletOrMobile from "@utils/useIsTabletOMobile";
 import { useContext } from "react";
 import Modal from "react-modal";
@@ -68,6 +69,16 @@ const Header = styled.div`
 // };
 
 export const errorParser = err => {
+	const rawMessage =
+		typeof err === "string" ? err.trim() : err?.toString?.().trim?.() || "";
+	const normalizedMessage = normalizeClientErrorMessage(err, "");
+	if (
+		normalizedMessage &&
+		(typeof err !== "string" || normalizedMessage !== rawMessage)
+	) {
+		return normalizedMessage;
+	}
+
 	const errDetails = extractJSON(err.toString());
 	try {
 		let specificErrorDetails = errDetails[0];
