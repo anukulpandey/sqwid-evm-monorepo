@@ -14,6 +14,6 @@ COPY . .
 
 RUN yarn workspace @sqwid/contracts compile
 
-EXPOSE 8080
+EXPOSE 8097
 
 CMD ["sh", "-lc", "until yarn workspace @sqwid/backend db:migrate; do echo 'waiting for postgres'; sleep 2; done && yarn workspace @sqwid/backend start"]

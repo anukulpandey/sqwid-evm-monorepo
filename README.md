@@ -59,3 +59,10 @@ By default, the Dokploy setup serves the frontend from the `client` service and 
 If you set `BACKEND_PUBLIC_URL`, the frontend bakes that value into the static bundle at build time, so rebuild the `client` service after changing it.
 
 If `JWT_SECRET` is omitted, the Dokploy compose file falls back to `sqwid-local-dev-secret` so the stack can boot, but you should set a real secret in Dokploy for production.
+
+Current internal service ports:
+
+- `client`: `3017`
+- `backend`: `8097`
+
+The client container now writes Nginx access and error logs to stdout/stderr so Dokploy log streaming can show frontend requests.

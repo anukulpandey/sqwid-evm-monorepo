@@ -36,7 +36,7 @@ services:
     env_file:
       - apps/backend/.env
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT:-8097}:8097"
 
   client:
     build:
@@ -47,7 +47,7 @@ services:
     env_file:
       - apps/client/.env
     ports:
-      - "${CLIENT_PORT:-3000}:3000"
+      - "${CLIENT_PORT:-3017}:3017"
 
 volumes:
   postgres_data:
