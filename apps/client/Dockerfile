@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apk add --no-cache git python3 make g++
 
 ARG REACT_APP_CHAIN_ID=13939
-ARG REACT_APP_RPC_URL=http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io
+ARG REACT_APP_RPC_URL=https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io
 ARG REACT_APP_BACKEND_URL=http://localhost:8097
 ARG REACT_APP_CHAIN_NAME=Sqwid\ 13939
 ARG REACT_APP_CURRENCY_SYMBOL=REEF

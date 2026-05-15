@@ -3,7 +3,7 @@
   "network": {
     "name": "custom_13939",
     "chainId": 13939,
-    "rpcUrl": "http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io"
+    "rpcUrl": "https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io"
   },
   "deployer": "0x212e2A4545ee7AC59837212F9860DbC245090B6f",
   "contracts": {

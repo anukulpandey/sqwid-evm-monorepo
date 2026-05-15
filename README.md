@@ -8,7 +8,7 @@ This workspace contains the full Sqwid stack for chain `13939`:
 
 ## Network
 
-- RPC URL: `http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io`
+- RPC URL: `https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io`
 - Chain ID: `13939`
 
 ## Shared contract config
