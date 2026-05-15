@@ -7,6 +7,12 @@ require("dotenv").config({
 const { manifests } = require("@sqwid/contracts");
 
 const manifest = manifests.chain13939;
+const contracts = {
+  erc1155: "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f",
+  marketplace: "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7",
+  utility: "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
+  governance: "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
+};
 
 const parseCsv = (value) =>
   (value || "")
@@ -27,18 +33,5 @@ module.exports = {
   defaultCollectionId:
     process.env.DEFAULT_COLLECTION_ID || "ASwOXeRM5DfghnURP4g2",
   moderators: parseCsv(process.env.MODERATORS),
-  contracts: {
-    erc1155:
-      process.env.ERC1155_ADDRESS ||
-      manifest.contracts.SqwidERC1155.address,
-    marketplace:
-      process.env.MARKETPLACE_ADDRESS ||
-      manifest.contracts.SqwidMarketplace.address,
-    utility:
-      process.env.UTILITY_ADDRESS ||
-      manifest.contracts.SqwidMarketplaceUtil.address,
-    governance:
-      process.env.GOVERNANCE_ADDRESS ||
-      manifest.contracts.SqwidGovernance.address,
-  },
+  contracts,
 };
