@@ -1,5 +1,5 @@
 const config = require("./config");
-const { marketplace, utility, erc1155 } = require("./contracts");
+const { marketplace, erc1155 } = require("./contracts");
 const { fetchJson } = require("./ipfs");
 const {
   getCollectible,
@@ -40,7 +40,7 @@ const ensureCollectible = async (itemId, overrides = {}) => {
 };
 
 const syncItems = async () => {
-  const totalItems = Number(await utility.fetchNumberItems());
+  const totalItems = Number(await marketplace.currentItemId());
   const syncState = (await getSyncValue("items", { lastSyncedItemId: 0 })) || {
     lastSyncedItemId: 0,
   };
@@ -57,7 +57,12 @@ const syncItems = async () => {
 };
 
 const startSync = async () => {
-  await syncItems();
+  try {
+    await syncItems();
+  } catch (error) {
+    console.error("Initial sync failed", error);
+  }
+
   setInterval(() => {
     syncItems().catch((error) => {
       console.error("Sync loop failed", error);

@@ -176,9 +176,117 @@ const readCollectionView = async (collectionId, { includeStats = false } = {}) =
   return view;
 };
 
-const readPositionView = async (positionId) => {
-  const raw = await utility.fetchPosition(positionId);
-  if (!Number(raw.positionId)) {
+const utilityFallbackWarnings = new Set();
+
+const warnUtilityFallback = (operation, error) => {
+  if (utilityFallbackWarnings.has(operation)) {
+    return;
+  }
+
+  utilityFallbackWarnings.add(operation);
+  console.warn(
+    `SqwidMarketplaceUtil unavailable for ${operation}; falling back to direct marketplace reads.`,
+    error?.message || error
+  );
+};
+
+const buildRawPositionFromMarketplace = async (positionId, basePosition = null) => {
+  const position = basePosition || (await marketplace.fetchPosition(positionId));
+  if (!Number(position.positionId)) {
+    return null;
+  }
+
+  const item = await marketplace.fetchItem(position.itemId);
+  if (!Number(item.itemId)) {
+    return null;
+  }
+
+  let amount = position.amount;
+  let auctionData = {
+    deadline: 0,
+    minBid: 0,
+    highestBidder: ethers.constants.AddressZero,
+    highestBid: 0,
+    totalAddresses: 0,
+  };
+  let raffleData = {
+    deadline: 0,
+    totalValue: 0,
+    totalAddresses: 0,
+  };
+  let loanData = {
+    loanAmount: 0,
+    feeAmount: 0,
+    numMinutes: 0,
+    deadline: 0,
+    lender: ethers.constants.AddressZero,
+  };
+
+  if (Number(position.state) === 0) {
+    amount = await erc1155.balanceOf(position.owner, item.tokenId);
+  } else if (Number(position.state) === 2) {
+    auctionData = await marketplace.fetchAuctionData(positionId);
+  } else if (Number(position.state) === 3) {
+    raffleData = await marketplace.fetchRaffleData(positionId);
+  } else if (Number(position.state) === 4) {
+    loanData = await marketplace.fetchLoanData(positionId);
+  }
+
+  return {
+    positionId: position.positionId,
+    item,
+    owner: position.owner,
+    amount,
+    price: position.price,
+    marketFee: position.marketFee,
+    state: position.state,
+    auctionData,
+    raffleData,
+    loanData,
+  };
+};
+
+const fetchRawPosition = async (positionId) => {
+  try {
+    return await utility.fetchPosition(positionId);
+  } catch (error) {
+    warnUtilityFallback("fetchPosition", error);
+    return buildRawPositionFromMarketplace(positionId);
+  }
+};
+
+const collectRawPositions = async ({ offset = 0, limit = 12, positionFilter }) => {
+  const totalPositions = Number(await marketplace.currentPositionId());
+  const targetCount = offset + limit;
+  const matches = [];
+
+  for (let positionId = 1; positionId <= totalPositions; positionId += 1) {
+    const position = await marketplace.fetchPosition(positionId);
+    if (!Number(position.positionId)) {
+      continue;
+    }
+
+    if (positionFilter && !positionFilter(position)) {
+      continue;
+    }
+
+    const rawPosition = await buildRawPositionFromMarketplace(positionId, position);
+    if (!rawPosition || Number(rawPosition.amount) <= 0) {
+      continue;
+    }
+
+    matches.push(rawPosition);
+    if (matches.length >= targetCount) {
+      break;
+    }
+  }
+
+  return matches.slice(offset, offset + limit);
+};
+
+const readPositionView = async (positionId, rawPosition = null) => {
+  const raw = rawPosition || (await fetchRawPosition(positionId));
+  if (!raw || !Number(raw.positionId)) {
     return null;
   }
 
@@ -291,45 +399,75 @@ const readPositionView = async (positionId) => {
 };
 
 const readStatePositions = async (state, offset = 0, limit = 12) => {
-  const pageSize = Math.max(limit, 25);
-  let pageNumber = 1;
-  let totalPages = 1;
-  let collected = [];
+  try {
+    const pageSize = Math.max(limit, 25);
+    let pageNumber = 1;
+    let totalPages = 1;
+    let collected = [];
 
-  while (pageNumber <= totalPages && collected.length < offset + limit) {
-    const page = await utility.fetchPositionsByStatePage(state, pageSize, pageNumber);
-    totalPages = Number(page.totalPages || page[1] || 0);
-    const positions = page.positions || page[0] || [];
-    collected = collected.concat(
-      positions.filter((position) => Number(position.positionId) > 0)
+    while (pageNumber <= totalPages && collected.length < offset + limit) {
+      const page = await utility.fetchPositionsByStatePage(state, pageSize, pageNumber);
+      totalPages = Number(page.totalPages || page[1] || 0);
+      const positions = page.positions || page[0] || [];
+      collected = collected.concat(
+        positions.filter((position) => Number(position.positionId) > 0)
+      );
+      pageNumber += 1;
+    }
+
+    const slice = collected.slice(offset, offset + limit);
+    return Promise.all(slice.map((position) => readPositionView(Number(position.positionId))));
+  } catch (error) {
+    warnUtilityFallback("fetchPositionsByStatePage", error);
+    const positions = await collectRawPositions({
+      offset,
+      limit,
+      positionFilter: (position) => Number(position.state) === state,
+    });
+    return Promise.all(
+      positions.map((position) => readPositionView(Number(position.positionId), position))
     );
-    pageNumber += 1;
   }
-
-  const slice = collected.slice(offset, offset + limit);
-  return Promise.all(slice.map((position) => readPositionView(Number(position.positionId))));
 };
 
 const readAddressPositions = async (address, state, offset = 0, limit = 12) => {
-  const pageSize = Math.max(limit, 25);
-  let pageNumber = 1;
-  let totalPages = 1;
-  let collected = [];
+  try {
+    const pageSize = Math.max(limit, 25);
+    let pageNumber = 1;
+    let totalPages = 1;
+    let collected = [];
 
-  while (pageNumber <= totalPages && collected.length < offset + limit) {
-    const page = await utility.fetchAddressPositionsPage(address, pageSize, pageNumber);
-    totalPages = Number(page.totalPages || page[1] || 0);
-    let positions = page.positions || page[0] || [];
-    positions = positions.filter((position) => Number(position.positionId) > 0);
-    if (typeof state === "number") {
-      positions = positions.filter((position) => Number(position.state) === state);
+    while (pageNumber <= totalPages && collected.length < offset + limit) {
+      const page = await utility.fetchAddressPositionsPage(address, pageSize, pageNumber);
+      totalPages = Number(page.totalPages || page[1] || 0);
+      let positions = page.positions || page[0] || [];
+      positions = positions.filter((position) => Number(position.positionId) > 0);
+      if (typeof state === "number") {
+        positions = positions.filter((position) => Number(position.state) === state);
+      }
+      collected = collected.concat(positions);
+      pageNumber += 1;
     }
-    collected = collected.concat(positions);
-    pageNumber += 1;
-  }
 
-  const slice = collected.slice(offset, offset + limit);
-  return Promise.all(slice.map((position) => readPositionView(Number(position.positionId))));
+    const slice = collected.slice(offset, offset + limit);
+    return Promise.all(slice.map((position) => readPositionView(Number(position.positionId))));
+  } catch (error) {
+    warnUtilityFallback("fetchAddressPositionsPage", error);
+    const positions = await collectRawPositions({
+      offset,
+      limit,
+      positionFilter: (position) => {
+        if (position.owner.toLowerCase() !== address.toLowerCase()) {
+          return false;
+        }
+
+        return typeof state === "number" ? Number(position.state) === state : true;
+      },
+    });
+    return Promise.all(
+      positions.map((position) => readPositionView(Number(position.positionId), position))
+    );
+  }
 };
 
 const readCollectionPositions = async (collectionId, state, offset = 0, limit = 12) => {
@@ -850,29 +988,79 @@ const start = async () => {
     try {
       const pageNumber = Math.max(Number(req.query.page || 1), 1);
       const pageSize = Math.min(Number(req.query.pageSize || 10), 50);
-      const response = await utility.fetchAddressBidsPage(
-        req.user.evmAddress,
-        pageSize,
-        pageNumber,
-        false
-      );
-      const bids = await Promise.all(
-        (response.bids || response[0] || [])
-          .filter((entry) => Number(entry.auction.positionId) > 0)
-          .map(async (entry) => ({
-            auction: await readPositionView(Number(entry.auction.positionId)),
+      try {
+        const response = await utility.fetchAddressBidsPage(
+          req.user.evmAddress,
+          pageSize,
+          pageNumber,
+          false
+        );
+        const bids = await Promise.all(
+          (response.bids || response[0] || [])
+            .filter((entry) => Number(entry.auction.positionId) > 0)
+            .map(async (entry) => ({
+              auction: await readPositionView(Number(entry.auction.positionId)),
+              bidAmount: formatEther(entry.bidAmount),
+            }))
+        );
+
+        return res.json({
+          bids,
+          pagination: {
+            totalPages: Number(response.totalPages || response[1] || 1),
+            page: pageNumber,
+            pageSize,
+          },
+        });
+      } catch (error) {
+        warnUtilityFallback("fetchAddressBidsPage", error);
+
+        const matchedBids = [];
+        const totalPositions = Number(await marketplace.currentPositionId());
+
+        for (let positionId = 1; positionId <= totalPositions; positionId += 1) {
+          const position = await marketplace.fetchPosition(positionId);
+          if (!Number(position.positionId) || Number(position.state) !== 2) {
+            continue;
+          }
+
+          const auctionData = await marketplace.fetchAuctionData(positionId);
+          const totalAddresses = Number(auctionData.totalAddresses || 0);
+
+          for (let bidIndex = 0; bidIndex < totalAddresses; bidIndex += 1) {
+            const [bidder, bidAmount] = await marketplace.fetchBid(positionId, bidIndex);
+            if (bidder.toLowerCase() !== req.user.evmAddress.toLowerCase()) {
+              continue;
+            }
+
+            const auction = await buildRawPositionFromMarketplace(positionId, position);
+            if (auction && Number(auction.amount) > 0) {
+              matchedBids.push({ auction, bidAmount });
+            }
+            break;
+          }
+        }
+
+        const totalPages =
+          matchedBids.length > 0 ? Math.ceil(matchedBids.length / pageSize) : 0;
+        const startIndex = (pageNumber - 1) * pageSize;
+        const slice = matchedBids.slice(startIndex, startIndex + pageSize);
+        const bids = await Promise.all(
+          slice.map(async (entry) => ({
+            auction: await readPositionView(Number(entry.auction.positionId), entry.auction),
             bidAmount: formatEther(entry.bidAmount),
           }))
-      );
+        );
 
-      return res.json({
-        bids,
-        pagination: {
-          totalPages: Number(response.totalPages || response[1] || 1),
-          page: pageNumber,
-          pageSize,
-        },
-      });
+        return res.json({
+          bids,
+          pagination: {
+            totalPages,
+            page: pageNumber,
+            pageSize,
+          },
+        });
+      }
     } catch (error) {
       return next(error);
     }
@@ -892,7 +1080,10 @@ const start = async () => {
 
   app.get("/get/marketplace/available-collection/:owner/:positionId", optionalAuth, async (req, res, next) => {
     try {
-      const position = await utility.fetchPosition(Number(req.params.positionId));
+      const position = await fetchRawPosition(Number(req.params.positionId));
+      if (!position) {
+        return res.status(404).json({ error: "Position not found" });
+      }
       const balance = await erc1155.balanceOf(req.params.owner, position.item.tokenId);
       return res.json([{ amount: Number(balance) }]);
     } catch (error) {
