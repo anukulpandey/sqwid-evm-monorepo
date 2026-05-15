@@ -32,6 +32,7 @@ RUN yarn install
 
 COPY . .
 
+RUN yarn workspace @sqwid/contracts compile
 RUN yarn workspace @sqwid/client build
 
 FROM nginx:stable-alpine
