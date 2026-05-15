@@ -8,6 +8,11 @@ const {
   upsertCollectible,
 } = require("./store");
 
+const hasMarketplaceCode = async () => {
+  const code = await marketplace.provider.getCode(marketplace.address);
+  return Boolean(code && code !== "0x");
+};
+
 const ensureCollectible = async (itemId, overrides = {}) => {
   const existing = await getCollectible(itemId);
   if (existing?.meta && Object.keys(existing.meta).length > 0 && !overrides.force) {
@@ -58,15 +63,41 @@ const syncItems = async () => {
 
 const startSync = async () => {
   try {
+    const marketplaceAvailable = await hasMarketplaceCode();
+    if (!marketplaceAvailable) {
+      console.warn(
+        `Skipping sync loop: no runtime code found at marketplace ${marketplace.address}`
+      );
+      return;
+    }
+  } catch (error) {
+    console.error("Unable to verify marketplace code before starting sync", error);
+    return;
+  }
+
+  try {
     await syncItems();
   } catch (error) {
     console.error("Initial sync failed", error);
+    return;
   }
 
-  setInterval(() => {
-    syncItems().catch((error) => {
-      console.error("Sync loop failed", error);
-    });
+  let consecutiveFailures = 0;
+
+  const intervalId = setInterval(() => {
+    syncItems()
+      .then(() => {
+        consecutiveFailures = 0;
+      })
+      .catch((error) => {
+        consecutiveFailures += 1;
+        console.error("Sync loop failed", error);
+
+        if (consecutiveFailures >= 3) {
+          console.error("Disabling sync loop after repeated failures");
+          clearInterval(intervalId);
+        }
+      });
   }, 30000);
 };
 
