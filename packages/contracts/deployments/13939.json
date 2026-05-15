@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-13T10:02:54.988Z",
+  "generatedAt": "2026-05-15T11:24:32.976Z",
   "network": {
     "name": "custom_13939",
     "chainId": 13939,
@@ -8,28 +8,28 @@
   "deployer": "0x212e2A4545ee7AC59837212F9860DbC245090B6f",
   "contracts": {
     "SqwidERC1155": {
-      "address": "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
-      "transactionHash": "0x9637bd797f92c301dc43cbcbc2c0e275cd4e883944fb9904b19a982fb7705341",
+      "address": "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f",
+      "transactionHash": "0x55fafc67aaf4701751e3c91afbcb0091a241e7357dca2ec679bdac4099c24204",
       "constructorArgs": []
     },
     "SqwidMarketplace": {
-      "address": "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
-      "transactionHash": "0xfab6e38c5df0a428a68374d434896309c355095439b11d9dfe5ec87de28dd586",
+      "address": "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7",
+      "transactionHash": "0x09d22d64e32faca7b8ba0c3d9b1fdbfa7cdbb22c4644e07be993efab495b9043",
       "constructorArgs": [
         250,
-        "0x5Da80f08835b6bE25233a8ac7F20593cE277697A"
+        "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f"
       ]
     },
     "SqwidMarketplaceUtil": {
-      "address": "0xDBd5a41a5D1d787C23073fAdb234eb2512178248",
-      "transactionHash": "0xfd85f1a7ededbb910da70f966b5799df2bbdb66e1a8e882cf5498200d20e8518",
+      "address": "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
+      "transactionHash": "0x2104b2ed909e305ff20aa64dd50a33a06cbea473b9ec709c3aa5c76882f07515",
       "constructorArgs": [
-        "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027"
+        "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7"
       ]
     },
     "SqwidGovernance": {
-      "address": "0x9a1D7bD7D81069213B92b8f0cB3068717Bd916F2",
-      "transactionHash": "0x583f249c45fdf826e9fa51014157aa5301aee33d84d1a1e912856e38a649040d",
+      "address": "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
+      "transactionHash": "0x58858f92c09f4ff84ae386e1dda938309cf3b650c4c117f1ce5011b858ea6bd9",
       "constructorArgs": [
         [
           "0x212e2A4545ee7AC59837212F9860DbC245090B6f"
