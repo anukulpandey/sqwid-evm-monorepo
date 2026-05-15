@@ -58,6 +58,8 @@ const jsonLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const CONTRACT_CODE_CACHE_MS = 30_000;
+
 const parseAddress = (address) => {
   try {
     return ethers.utils.getAddress(address);
@@ -177,6 +179,8 @@ const readCollectionView = async (collectionId, { includeStats = false } = {}) =
 };
 
 const utilityFallbackWarnings = new Set();
+const missingContractWarnings = new Set();
+const contractCodeCache = new Map();
 
 const warnUtilityFallback = (operation, error) => {
   if (utilityFallbackWarnings.has(operation)) {
@@ -190,7 +194,52 @@ const warnUtilityFallback = (operation, error) => {
   );
 };
 
+const hasContractCode = async (address, label) => {
+  const cacheKey = `${label}:${address.toLowerCase()}`;
+  const cached = contractCodeCache.get(cacheKey);
+  const now = Date.now();
+
+  if (cached && now - cached.checkedAt < CONTRACT_CODE_CACHE_MS) {
+    return cached.value;
+  }
+
+  try {
+    const code = await provider.getCode(address);
+    const value = Boolean(code && code !== "0x");
+    contractCodeCache.set(cacheKey, { value, checkedAt: now });
+
+    if (!value && !missingContractWarnings.has(cacheKey)) {
+      missingContractWarnings.add(cacheKey);
+      console.warn(
+        `No runtime code found for ${label} at ${address}; returning empty marketplace responses.`
+      );
+    }
+
+    return value;
+  } catch (error) {
+    contractCodeCache.set(cacheKey, { value: false, checkedAt: now });
+    if (!missingContractWarnings.has(cacheKey)) {
+      missingContractWarnings.add(cacheKey);
+      console.warn(
+        `Unable to verify runtime code for ${label} at ${address}; returning empty marketplace responses.`,
+        error?.message || error
+      );
+    }
+    return false;
+  }
+};
+
+const isMarketplaceAvailable = async () =>
+  hasContractCode(marketplace.address, "SqwidMarketplace");
+
+const isErc1155Available = async () =>
+  hasContractCode(erc1155.address, "SqwidERC1155");
+
 const buildRawPositionFromMarketplace = async (positionId, basePosition = null) => {
+  if (!(await isMarketplaceAvailable())) {
+    return null;
+  }
+
   const position = basePosition || (await marketplace.fetchPosition(positionId));
   if (!Number(position.positionId)) {
     return null;
@@ -222,7 +271,7 @@ const buildRawPositionFromMarketplace = async (positionId, basePosition = null) 
     lender: ethers.constants.AddressZero,
   };
 
-  if (Number(position.state) === 0) {
+  if (Number(position.state) === 0 && (await isErc1155Available())) {
     amount = await erc1155.balanceOf(position.owner, item.tokenId);
   } else if (Number(position.state) === 2) {
     auctionData = await marketplace.fetchAuctionData(positionId);
@@ -247,6 +296,10 @@ const buildRawPositionFromMarketplace = async (positionId, basePosition = null) 
 };
 
 const fetchRawPosition = async (positionId) => {
+  if (!(await isMarketplaceAvailable())) {
+    return null;
+  }
+
   try {
     return await utility.fetchPosition(positionId);
   } catch (error) {
@@ -256,6 +309,10 @@ const fetchRawPosition = async (positionId) => {
 };
 
 const collectRawPositions = async ({ offset = 0, limit = 12, positionFilter }) => {
+  if (!(await isMarketplaceAvailable())) {
+    return [];
+  }
+
   const totalPositions = Number(await marketplace.currentPositionId());
   const targetCount = offset + limit;
   const matches = [];
@@ -318,7 +375,13 @@ const readPositionView = async (positionId, rawPosition = null) => {
       avatar: getAvatar(raw.owner),
     };
 
-  const royaltyInfo = await erc1155.royaltyInfo(tokenId, 100);
+  const royaltyInfo =
+    (await isErc1155Available())
+      ? await erc1155.royaltyInfo(tokenId, 100)
+      : {
+          receiver: ethers.constants.AddressZero,
+          royaltyAmount: 0,
+        };
 
   return {
     approved: collectible?.approved ?? true,
@@ -399,6 +462,10 @@ const readPositionView = async (positionId, rawPosition = null) => {
 };
 
 const readStatePositions = async (state, offset = 0, limit = 12) => {
+  if (!(await isMarketplaceAvailable())) {
+    return [];
+  }
+
   try {
     const pageSize = Math.max(limit, 25);
     let pageNumber = 1;
@@ -431,6 +498,10 @@ const readStatePositions = async (state, offset = 0, limit = 12) => {
 };
 
 const readAddressPositions = async (address, state, offset = 0, limit = 12) => {
+  if (!(await isMarketplaceAvailable())) {
+    return [];
+  }
+
   try {
     const pageSize = Math.max(limit, 25);
     let pageNumber = 1;
@@ -977,6 +1048,10 @@ const start = async () => {
 
   app.get("/get/marketplace/withdrawable", auth, async (req, res, next) => {
     try {
+      if (!(await isMarketplaceAvailable())) {
+        return res.json({ balance: "0" });
+      }
+
       const balance = await marketplace.addressBalance(req.user.evmAddress);
       return res.json({ balance: formatEther(balance) });
     } catch (error) {
@@ -988,6 +1063,18 @@ const start = async () => {
     try {
       const pageNumber = Math.max(Number(req.query.page || 1), 1);
       const pageSize = Math.min(Number(req.query.pageSize || 10), 50);
+
+      if (!(await isMarketplaceAvailable())) {
+        return res.json({
+          bids: [],
+          pagination: {
+            totalPages: 0,
+            page: pageNumber,
+            pageSize,
+          },
+        });
+      }
+
       try {
         const response = await utility.fetchAddressBidsPage(
           req.user.evmAddress,
@@ -1080,10 +1167,18 @@ const start = async () => {
 
   app.get("/get/marketplace/available-collection/:owner/:positionId", optionalAuth, async (req, res, next) => {
     try {
+      if (!(await isMarketplaceAvailable())) {
+        return res.json([{ amount: 0 }]);
+      }
+
       const position = await fetchRawPosition(Number(req.params.positionId));
       if (!position) {
         return res.status(404).json({ error: "Position not found" });
       }
+      if (!(await isErc1155Available())) {
+        return res.json([{ amount: 0 }]);
+      }
+
       const balance = await erc1155.balanceOf(req.params.owner, position.item.tokenId);
       return res.json([{ amount: Number(balance) }]);
     } catch (error) {
