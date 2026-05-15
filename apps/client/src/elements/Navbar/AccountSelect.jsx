@@ -11,7 +11,6 @@ import { LazyMotion, domAnimation, m } from "framer-motion";
 import { truncateAddress } from "@utils/textUtils";
 import AuthContext from "@contexts/Auth/AuthContext";
 import ProfileElement from "./ProfileElement";
-import FadeLoaderIcon from "@static/svg/FadeLoader";
 import { DividerHorizontal } from "@elements/Default/Divider";
 import constants from "@utils/constants";
 import SimpleBar from "simplebar-react";
@@ -397,13 +396,6 @@ const NetworkSwitchButton = () => {
 const AccountSelect = ({ isActive, setIsActive, accounts }) => {
 	const { redirect, errorCode } = useContext(AccountSelectContext);
 	const [elemIsVisible, setElemIsVisible] = useState(isActive);
-
-	const initialClaimButtonText = "I Accept";
-	const [claimButtonText, setClaimButtonText] = useState(
-		initialClaimButtonText
-	);
-
-	const [signer, setSigner] = useState("");
 	const { auth, login, logout, setLoading } = useContext(AuthContext);
 	const [alert, setAlert] = useState({
 		isActive: false,
@@ -412,13 +404,10 @@ const AccountSelect = ({ isActive, setIsActive, accounts }) => {
 	const modalRef = useRef();
 	const alertRef = useRef();
 	const history = useHistory();
-	//eslint-disable-next-line
-	const [selectedAccount, setSelectedAccount] = useState(null);
 	const { showErrorModal } = useErrorModalHelper();
 	const _onAccountChange = async val => {
 		setLoading(true);
 		let account = accounts.find(acc => acc.meta.name === val);
-		setSelectedAccount(account);
 		Connect(account)
 			.then(async response => {
 				const acc = await response.signer.getAddress();
@@ -688,7 +677,6 @@ const AccountSelect = ({ isActive, setIsActive, accounts }) => {
 									scale: 0.99,
 								}}
 								onClick={() => {
-									setClaimButtonText(initialClaimButtonText);
 									setIsActive(false);
 									setAlert({
 										...alert,

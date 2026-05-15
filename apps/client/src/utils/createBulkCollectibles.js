@@ -13,7 +13,6 @@ import bread from "./bread";
 const MAX_ITEMS_PER_TX = 75;
 const BASE_GAS = 1_000_000;
 const GAS_PER_UNIT = 420_000;
-const STORAGE_PER_UNIT = 1_500;
 
 const uploadChunk = async (data, fileName, chunk, totalChunks) => {
 	const address = JSON.parse(localStorage.getItem("auth"))?.auth.address;

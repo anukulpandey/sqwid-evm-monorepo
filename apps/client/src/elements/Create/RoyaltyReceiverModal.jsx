@@ -3,7 +3,6 @@ import styled, { css, keyframes } from "styled-components";
 import "simplebar/dist/simplebar.min.css";
 import { LazyMotion, domAnimation } from "framer-motion";
 import LoadingIcon from "@static/svg/LoadingIcon";
-import { getCurrentNetwork } from "@utils/network";
 import CancelIcon from "@static/svg/CancelIcon";
 import { useErrorModalHelper } from "@elements/Default/ErrorModal";
 

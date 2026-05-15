@@ -388,7 +388,7 @@ const ConfigContainer = styled.div`
 `;
 
 const CurrentPrice = () => {
-	const { collectibleInfo, setCollectibleInfo } = useContext(CollectibleContext);
+	const { collectibleInfo } = useContext(CollectibleContext);
 	const stateInfo = useStateInfo();
 	const price = formatReefPrice(stateInfo.price || stateInfo.loanAmount);
 	const [usdPrice, setUsdPrice] = useState(
@@ -697,16 +697,16 @@ const Config2 = () => {
 				}
 				);
 				const { data } = res;
-				if (data[0].amount != collectibleInfo.amount) {
-					setCollectibleInfo({ ...collectibleInfo, amount: data[0].amount })
+					if (data[0].amount !== collectibleInfo.amount) {
+						setCollectibleInfo({ ...collectibleInfo, amount: data[0].amount })
+					}
+				} catch (_error) {
+					return;
 				}
-			} catch (e) {
-				console.log(e)
-			}
-		};
-		setIsCollectibleWhitelisted(collectibleInfo.approved);
-		fetchCollectibleAmount(collectibleInfo.positionId, collectibleInfo.owner.address);
-	}, [collectibleInfo])
+			};
+			setIsCollectibleWhitelisted(collectibleInfo.approved);
+			fetchCollectibleAmount(collectibleInfo.positionId, collectibleInfo.owner.address);
+		}, [collectibleInfo, setCollectibleInfo])
 
 	return (
 		<BottomContainer>
@@ -1300,7 +1300,7 @@ const useComponent = market => {
 
 		return (
 			<>
-						{isValidModerator && collectibleInfo && collectibleInfo.approved!=true && <ApproveAnimBtn onClick={() => approveCollectibleByModerator(collectibleInfo.itemId, collectibleInfo.collection.id)} disabled={!collectibleInfo}>
+						{isValidModerator && collectibleInfo && collectibleInfo.approved !== true && <ApproveAnimBtn onClick={() => approveCollectibleByModerator(collectibleInfo.itemId, collectibleInfo.collection.id)} disabled={!collectibleInfo}>
 				Whitelist
 			</ApproveAnimBtn>}
 			<ConfigWrapper state={market.state}>
