@@ -38,7 +38,7 @@ yarn docker:up
 
 Use [docker-compose.dokploy.yml](/Users/anukul/Desktop/sqwid-evm-monorepo/docker-compose.dokploy.yml) for Dokploy deployments.
 
-Set these variables in Dokploy before the first deploy:
+Recommended Dokploy variables:
 
 - `JWT_SECRET`
 
@@ -57,3 +57,5 @@ Optional overrides:
 By default, the Dokploy setup serves the frontend from the `client` service and proxies browser requests from `/api/*` to the `backend` service through Nginx, so you only need a public domain for the frontend unless you want the API exposed separately.
 
 If you set `BACKEND_PUBLIC_URL`, the frontend bakes that value into the static bundle at build time, so rebuild the `client` service after changing it.
+
+If `JWT_SECRET` is omitted, the Dokploy compose file falls back to `sqwid-local-dev-secret` so the stack can boot, but you should set a real secret in Dokploy for production.

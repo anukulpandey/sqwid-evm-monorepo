@@ -38,7 +38,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-sqwid}:${POSTGRES_PASSWORD:-sqwid}@postgres:5432/${POSTGRES_DB:-sqwid}
       RPC_URL: ${RPC_URL:-http://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
       CHAIN_ID: ${CHAIN_ID:-13939}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Dokploy}
+      JWT_SECRET: ${JWT_SECRET:-sqwid-local-dev-secret}
       IPFS_API_URL: http://ipfs:5001
       IPFS_GATEWAY_URL: ${IPFS_GATEWAY_URL:-http://ipfs:8080/ipfs/}
       CORS_ORIGIN: ${CLIENT_PUBLIC_URL:-http://localhost:3000}
