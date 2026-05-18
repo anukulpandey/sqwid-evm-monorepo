@@ -1,38 +1,38 @@
 {
-  "generatedAt": "2026-05-15T11:24:32.976Z",
+  "generatedAt": "2026-05-18T12:59:42.619Z",
   "network": {
     "name": "custom_13939",
     "chainId": 13939,
-    "rpcUrl": "https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io"
+    "rpcUrl": "https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.nip.io/"
   },
-  "deployer": "0x212e2A4545ee7AC59837212F9860DbC245090B6f",
+  "deployer": "0x051C64f41FAbDB6EE74767ff0390Cd52a0749d56",
   "contracts": {
     "SqwidERC1155": {
-      "address": "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f",
-      "transactionHash": "0x55fafc67aaf4701751e3c91afbcb0091a241e7357dca2ec679bdac4099c24204",
+      "address": "0x1DF9D4bE7cdeF8cB9815586408EFcd5aa8C7cd5A",
+      "transactionHash": "0xb1d8d3d517075ca8a975e4deb8836d1d2f66fbf6553cec426bb3ddf5fac5e76a",
       "constructorArgs": []
     },
     "SqwidMarketplace": {
-      "address": "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7",
-      "transactionHash": "0x09d22d64e32faca7b8ba0c3d9b1fdbfa7cdbb22c4644e07be993efab495b9043",
+      "address": "0x3C2BA92EAFAbA6A5aC21502D8C55d3A33950f7A6",
+      "transactionHash": "0x91c79077bb81cc56a625c80236948c700a07f4d9d58c642ada3194018db64467",
       "constructorArgs": [
         250,
-        "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f"
+        "0x1DF9D4bE7cdeF8cB9815586408EFcd5aa8C7cd5A"
       ]
     },
     "SqwidMarketplaceUtil": {
-      "address": "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
-      "transactionHash": "0x2104b2ed909e305ff20aa64dd50a33a06cbea473b9ec709c3aa5c76882f07515",
+      "address": "0xDAb89107eaF290312fd8e80463A6a9Ec3D428F4A",
+      "transactionHash": "0xcdf138304b654d8a8411ec72e4efc2c533470b0ed5227c42c8ec6b55b6677b60",
       "constructorArgs": [
-        "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7"
+        "0x3C2BA92EAFAbA6A5aC21502D8C55d3A33950f7A6"
       ]
     },
     "SqwidGovernance": {
-      "address": "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
-      "transactionHash": "0x58858f92c09f4ff84ae386e1dda938309cf3b650c4c117f1ce5011b858ea6bd9",
+      "address": "0xa3Cab0B7288fA4CAe22CcD8B1a80c4bFaDe27664",
+      "transactionHash": "0x5facc1443973be52cf5817a0a0fe282896f98dced2d03f0c93febd7da0011257",
       "constructorArgs": [
         [
-          "0x212e2A4545ee7AC59837212F9860DbC245090B6f"
+          "0x051C64f41FAbDB6EE74767ff0390Cd52a0749d56"
         ],
         1
       ]

@@ -36,7 +36,7 @@ services:
     environment:
       PORT: 8097
       DATABASE_URL: postgresql://${POSTGRES_USER:-sqwid}:${POSTGRES_PASSWORD:-sqwid}@postgres:5432/${POSTGRES_DB:-sqwid}
-      RPC_URL: ${RPC_URL:-https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
+      RPC_URL: ${RPC_URL:-https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.nip.io/}
       CHAIN_ID: ${CHAIN_ID:-13939}
       JWT_SECRET: ${JWT_SECRET:-sqwid-local-dev-secret}
       IPFS_API_URL: http://ipfs:5001
@@ -52,7 +52,7 @@ services:
       dockerfile: apps/client/Dockerfile
       args:
         REACT_APP_CHAIN_ID: ${CHAIN_ID:-13939}
-        REACT_APP_RPC_URL: ${RPC_URL:-https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.sslip.io}
+        REACT_APP_RPC_URL: ${RPC_URL:-https://eth.reef-node-reefdevcluster-808c46-72-60-35-83.nip.io/}
         REACT_APP_BACKEND_URL: ${BACKEND_PUBLIC_URL:-/api}
         REACT_APP_CHAIN_NAME: ${REACT_APP_CHAIN_NAME:-Sqwid 13939}
         REACT_APP_CURRENCY_SYMBOL: ${REACT_APP_CURRENCY_SYMBOL:-REEF}

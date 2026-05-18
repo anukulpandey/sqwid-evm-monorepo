@@ -8,10 +8,10 @@ const { manifests } = require("@sqwid/contracts");
 
 const manifest = manifests.chain13939;
 const contracts = {
-  erc1155: "0xd8f420258A75581E8F110A1d46C2D3f78ea2087f",
-  marketplace: "0xCE3f75B12cA7128A3d3CEbD806b5a5A88467d9b7",
-  utility: "0x5Da80f08835b6bE25233a8ac7F20593cE277697A",
-  governance: "0xF1F7ef041e0602C40B1F92d41afe6A4C9E114027",
+  erc1155: "0x1DF9D4bE7cdeF8cB9815586408EFcd5aa8C7cd5A",
+  marketplace: "0x3C2BA92EAFAbA6A5aC21502D8C55d3A33950f7A6",
+  utility: "0xDAb89107eaF290312fd8e80463A6a9Ec3D428F4A",
+  governance: "0xa3Cab0B7288fA4CAe22CcD8B1a80c4bFaDe27664",
 };
 
 const parseCsv = (value) =>
